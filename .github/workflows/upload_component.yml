@@ -3,17 +3,19 @@ name: Push esp-openclaw-node to IDF Component Registry
 on:
   push:
     branches:
-      - master
+      - main
 
 jobs:
   upload_components:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
 
       - name: Upload esp-openclaw-node to IDF Component Registry
-        uses: espressif/upload-components-ci-action@v1
+        uses: espressif/upload-components-ci-action@v2
         with:
-          name: esp-openclaw-node
+          components: "esp-openclaw-node:components/esp-openclaw-node"
           namespace: "espressif"
           api_token: ${{ secrets.IDF_COMPONENT_API_TOKEN }}

@@ -1,6 +1,0 @@
-version: "1.0.0"
-description: "esp-openclaw-node"
-url: https://github.com/espressif/esp-openclaw-node
-dependencies:
-  idf:
-    version: ">=4.3"
