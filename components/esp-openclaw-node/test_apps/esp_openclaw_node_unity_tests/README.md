@@ -23,20 +23,11 @@ not require a live OpenClaw gateway.
 - setup-code validation for malformed or ambiguous payloads
 - explicit connect-request argument validation for saved-session, token,
   password, and no-auth sources
-- auth-material selection, including the password-signature exclusion rule
+- auth-material selection, including the rule that password auth is not included
+  in the device-signature payload
 - destroy-path notification safety
 - transport-state edge cases around challenge ping, clean close, and disconnect
   rejection while still connecting
-
-## Not covered here
-
-The following still need integration or end-to-end tests:
-
-- WebSocket handshake behavior against a live gateway
-- end-to-end event delivery for `CONNECTED`, `CONNECT_FAILED`, and
-  `DISCONNECTED`
-- persistence of `{ gateway_uri, device_token }` after a real `hello-ok`
-- example-application REPL flows and Wi-Fi recovery behavior
 
 ## Build and run
 

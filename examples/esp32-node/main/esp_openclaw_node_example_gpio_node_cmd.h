@@ -13,12 +13,12 @@
  * @brief Register the GPIO commands used by the generic ESP32 example.
  *
  * The helper adds the `gpio.mode`, `gpio.read`, and `gpio.write` commands.
- * The documented v1 path is:
+ * The documented path is:
  * - `gpio.mode` with `"input"`, `"output"`, or `"input_output"`
  * - `gpio.read`
  * - `gpio.write` after `"output"` or `"input_output"`
  *
- * Open-drain drive modes are intentionally not exposed in this v1 helper.
+ * Open-drain drive modes are intentionally not exposed in this helper.
  *
  * @param[in] node OpenClaw Node instance to extend.
  *

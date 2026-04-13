@@ -32,16 +32,16 @@ typedef struct esp_openclaw_node *esp_openclaw_node_handle_t;
 
 /** @brief Terminal and maintenance events emitted by the component. */
 typedef enum {
-    ESP_OPENCLAW_NODE_EVENT_CONNECTED = 0, /**< Handshake completed and the session is ready. */
+    ESP_OPENCLAW_NODE_EVENT_CONNECTED = 0,  /**< Handshake completed and the session is ready. */
     ESP_OPENCLAW_NODE_EVENT_CONNECT_FAILED, /**< A connect attempt ended without reaching ready state. */
-    ESP_OPENCLAW_NODE_EVENT_DISCONNECTED, /**< An established session disconnected or was closed locally. */
+    ESP_OPENCLAW_NODE_EVENT_DISCONNECTED,   /**< An established session disconnected or was closed locally. */
 } esp_openclaw_node_event_t;
 
 /** @brief Failure reasons surfaced on @ref ESP_OPENCLAW_NODE_EVENT_CONNECT_FAILED. */
 typedef enum {
-    ESP_OPENCLAW_NODE_CONNECT_FAILURE_TRANSPORT_START_FAILED = 0, /**< Transport startup or local connect setup failed. */
-    ESP_OPENCLAW_NODE_CONNECT_FAILURE_CONNECTION_LOST, /**< The transport dropped before connect completed. */
-    ESP_OPENCLAW_NODE_CONNECT_FAILURE_AUTH_REJECTED, /**< The gateway rejected the auth material or signature. */
+    ESP_OPENCLAW_NODE_CONNECT_FAILURE_TRANSPORT_START_FAILED = 0,  /**< Transport startup or local connect setup failed. */
+    ESP_OPENCLAW_NODE_CONNECT_FAILURE_CONNECTION_LOST,             /**< The transport dropped before connect completed. */
+    ESP_OPENCLAW_NODE_CONNECT_FAILURE_AUTH_REJECTED,               /**< The gateway rejected the auth material or signature. */
     ESP_OPENCLAW_NODE_CONNECT_FAILURE_SESSION_FINALIZATION_FAILED, /**< `hello-ok` handling failed after initial auth acceptance. */
 } esp_openclaw_node_connect_failure_reason_t;
 
@@ -54,7 +54,7 @@ typedef struct {
 
 /** @brief Disconnect reasons surfaced on @ref ESP_OPENCLAW_NODE_EVENT_DISCONNECTED. */
 typedef enum {
-    ESP_OPENCLAW_NODE_DISCONNECTED_REASON_REQUESTED = 0, /**< Disconnect was requested locally. */
+    ESP_OPENCLAW_NODE_DISCONNECTED_REASON_REQUESTED = 0,   /**< Disconnect was requested locally. */
     ESP_OPENCLAW_NODE_DISCONNECTED_REASON_CONNECTION_LOST, /**< Disconnect followed a transport loss or remote close. */
 } esp_openclaw_node_disconnected_reason_t;
 
@@ -108,28 +108,28 @@ typedef void (*esp_openclaw_node_event_cb_t)(
  * session once a route to the configured gateway exists.
  */
 typedef struct {
-    const char *display_name; /**< Human-readable name advertised to the gateway. */
-    const char *platform; /**< Lower-level platform string included in auth and identity metadata. */
-    const char *device_family; /**< Higher-level device family string included in auth metadata. */
-    const char *client_id; /**< Protocol client identifier sent during connect. */
-    const char *client_mode; /**< Protocol client mode, typically `node` for these examples. */
-    const char *role; /**< Protocol role string expected by the gateway for this client. */
-    const char *model_identifier; /**< Optional model string such as `esp32c6` or `esp32s3`. */
-    const char *locale; /**< Optional locale metadata advertised to the gateway. */
-    const char *tls_common_name; /**< Optional TLS common-name override for certificate checks. */
-    const char *tls_cert_pem; /**< Optional PEM trust anchor for `wss://` connections. */
-    size_t tls_cert_len; /**< Length of @p tls_cert_pem in bytes, or `0` for NUL-terminated PEM. */
-    bool use_cert_bundle; /**< Use the ESP-IDF certificate bundle for server validation. */
-    bool skip_cert_common_name_check; /**< Skip common-name validation for TLS server certificates. */
-    esp_openclaw_node_event_cb_t event_cb; /**< Optional event callback invoked on the component task. */
-    void *event_user_ctx; /**< Opaque caller context passed back to @p event_cb. */
+    const char *display_name;                         /**< Human-readable name advertised to the gateway. */
+    const char *platform;                             /**< Lower-level platform string included in auth and identity metadata. */
+    const char *device_family;                        /**< Higher-level device family string included in auth metadata. */
+    const char *client_id;                            /**< Protocol client identifier sent during connect. */
+    const char *client_mode;                          /**< Protocol client mode, typically `node` for these examples. */
+    const char *role;                                 /**< Protocol role string expected by the gateway for this client. */
+    const char *model_identifier;                     /**< Optional model string such as `esp32c6` or `esp32s3`. */
+    const char *locale;                               /**< Optional locale metadata advertised to the gateway. */
+    const char *tls_common_name;                      /**< Optional TLS common-name override for certificate checks. */
+    const char *tls_cert_pem;                         /**< Optional PEM trust anchor for `wss://` connections. */
+    size_t tls_cert_len;                              /**< Length of @p tls_cert_pem in bytes, or `0` for NUL-terminated PEM. */
+    bool use_cert_bundle;                             /**< Use the ESP-IDF certificate bundle for server validation. */
+    bool skip_cert_common_name_check;                 /**< Skip common-name validation for TLS server certificates. */
+    esp_openclaw_node_event_cb_t event_cb;            /**< Optional event callback invoked on the component task. */
+    void *event_user_ctx;                             /**< Opaque caller context passed back to @p event_cb. */
 } esp_openclaw_node_config_t;
 
 /* Command Types */
 
 /** @brief Structured command error returned to the gateway. */
 typedef struct {
-    const char *code; /**< Stable machine-readable error code returned to the gateway. */
+    const char *code;    /**< Stable machine-readable error code returned to the gateway. */
     const char *message; /**< Human-readable error message returned to the gateway. */
 } esp_openclaw_node_error_t;
 
@@ -161,9 +161,9 @@ typedef esp_err_t (*esp_openclaw_node_command_handler_t)(
 
 /** @brief Command registration entry passed to esp_openclaw_node_register_command(). */
 typedef struct {
-    const char *name; /**< Command name advertised to the gateway, for example `wifi.status`. */
+    const char *name;                            /**< Command name advertised to the gateway, for example `wifi.status`. */
     esp_openclaw_node_command_handler_t handler; /**< Command callback invoked for matching requests. */
-    void *context; /**< Opaque caller context passed to @p handler. */
+    void *context;                               /**< Opaque caller context passed to @p handler. */
 } esp_openclaw_node_command_t;
 
 /* Connect Input Types */
@@ -171,26 +171,26 @@ typedef struct {
 /** @brief Caller-chosen source for one connect attempt. */
 typedef enum {
     ESP_OPENCLAW_NODE_CONNECT_SOURCE_SAVED_SESSION = 0, /**< Reconnect with the persisted `{ gateway_uri, device_token }` session. */
-    ESP_OPENCLAW_NODE_CONNECT_SOURCE_SETUP_CODE, /**< Decode and use a setup code that contains the gateway URI and exactly one auth secret. */
-    ESP_OPENCLAW_NODE_CONNECT_SOURCE_GATEWAY_TOKEN, /**< Connect with an explicit shared gateway token. */
-    ESP_OPENCLAW_NODE_CONNECT_SOURCE_GATEWAY_PASSWORD, /**< Connect with an explicit shared gateway password. */
-    ESP_OPENCLAW_NODE_CONNECT_SOURCE_NO_AUTH, /**< Connect to a gateway that intentionally allows unauthenticated node access. */
+    ESP_OPENCLAW_NODE_CONNECT_SOURCE_SETUP_CODE,        /**< Decode and use a setup code that contains the gateway URI and exactly one auth secret. */
+    ESP_OPENCLAW_NODE_CONNECT_SOURCE_GATEWAY_TOKEN,     /**< Connect with an explicit shared gateway token. */
+    ESP_OPENCLAW_NODE_CONNECT_SOURCE_GATEWAY_PASSWORD,  /**< Connect with an explicit shared gateway password. */
+    ESP_OPENCLAW_NODE_CONNECT_SOURCE_NO_AUTH,           /**< Connect to a gateway that intentionally allows unauthenticated node access. */
 } esp_openclaw_node_connect_source_t;
 
 /**
  * @brief Connect request submitted to @ref esp_openclaw_node_request_connect().
  *
  * Field requirements by source:
- * - `SAVED_SESSION`: `gateway_uri = NULL`, `value = NULL`
- * - `SETUP_CODE`: `gateway_uri = NULL`, `value = <setup code>`
- * - `GATEWAY_TOKEN`: `gateway_uri = <ws://...|wss://...>`, `value = <token>`
+ * - `SAVED_SESSION`:    `gateway_uri = NULL`,                 `value = NULL`
+ * - `SETUP_CODE`:       `gateway_uri = NULL`,                 `value = <setup code>`
+ * - `GATEWAY_TOKEN`:    `gateway_uri = <ws://...|wss://...>`, `value = <token>`
  * - `GATEWAY_PASSWORD`: `gateway_uri = <ws://...|wss://...>`, `value = <password>`
- * - `NO_AUTH`: `gateway_uri = <ws://...|wss://...>`, `value = NULL`
+ * - `NO_AUTH`:          `gateway_uri = <ws://...|wss://...>`, `value = NULL`
  */
 typedef struct {
     esp_openclaw_node_connect_source_t source; /**< Caller-chosen source for this one connect attempt. */
-    const char *gateway_uri; /**< Explicit `ws://` or `wss://` URI when required by @p source. */
-    const char *value; /**< Setup code, token, or password when required by @p source. */
+    const char *gateway_uri;                   /**< Explicit `ws://` or `wss://` URI when required by @p source. */
+    const char *value;                         /**< Setup code, token, or password when required by @p source. */
 } esp_openclaw_node_connect_request_t;
 
 /* Lifecycle APIs */

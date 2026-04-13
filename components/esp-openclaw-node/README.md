@@ -514,7 +514,7 @@ Example `connect` from the node:
 
 For explicit no-auth, the component omits the `auth` object entirely.
 
-Successful response:
+Successful `hello-ok` response:
 
 ```json
 {
@@ -523,12 +523,37 @@ Successful response:
   "ok": true,
   "payload": {
     "type": "hello-ok",
+    "protocol": 3,
+    "server": {
+      "version": "2026.4.9",
+      "connId": "<gateway-connection-id>"
+    },
     "auth": {
-      "deviceToken": "<gateway-issued-device-token>"
+      "deviceToken": "<node-device-token>",
+      "role": "node",
+      "scopes": [],
+      "deviceTokens": [
+        {
+          "deviceToken": "<bounded-operator-token>",
+          "role": "operator",
+          "scopes": [
+            "operator.approvals",
+            "operator.read",
+            "operator.talk.secrets",
+            "operator.write"
+          ]
+        }
+      ]
     }
   }
 }
 ```
+
+The gateway may return the primary node reconnect token in
+`payload.auth.deviceToken` plus additional tokens in
+`payload.auth.deviceTokens`.  
+This component persists and reuses only
+`payload.auth.deviceToken`; it ignores any extra `payload.auth.deviceTokens` entries.
 
 Example `node.invoke.request` from the gateway:
 
