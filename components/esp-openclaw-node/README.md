@@ -610,7 +610,9 @@ stay disabled for production-like deployments.
 
 The component itself does not implement automatic reconnect policy.
 
-Applications can provide that behavior outside the component. A reconnect helper typically:
+This repository's examples provide that behavior outside the component in
+[examples/common/esp_openclaw_node_example_saved_session_reconnect.c](../../examples/common/esp_openclaw_node_example_saved_session_reconnect.c).
+That helper:
 
 - waits for Wi-Fi to be online
 - checks `esp_openclaw_node_has_saved_session()`
