@@ -20,7 +20,7 @@ static bool websocket_send_json(esp_openclaw_node_handle_t node, cJSON *root)
     if (json == NULL) {
         return false;
     }
-    int written = node->transport_ops->send_text(
+    int written = node->websocket_client_ops->send_text(
         node->ws,
         json,
         (int)strlen(json),

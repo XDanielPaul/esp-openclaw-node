@@ -154,7 +154,7 @@ static int test_transport_send_with_opcode(
     return 0;
 }
 
-static const esp_openclaw_node_transport_ops_t s_test_transport_ops = {
+static const esp_openclaw_node_websocket_client_ops_t s_test_websocket_client_ops = {
     .client_init = test_transport_client_init,
     .register_events = test_transport_register_events,
     .client_start = test_transport_client_start,
@@ -164,9 +164,9 @@ static const esp_openclaw_node_transport_ops_t s_test_transport_ops = {
     .send_with_opcode = test_transport_send_with_opcode,
 };
 
-const esp_openclaw_node_transport_ops_t *esp_openclaw_node_test_transport_ops(void)
+const esp_openclaw_node_websocket_client_ops_t *esp_openclaw_node_test_websocket_client_ops(void)
 {
-    return &s_test_transport_ops;
+    return &s_test_websocket_client_ops;
 }
 
 static void reset_openclaw_storage(void)

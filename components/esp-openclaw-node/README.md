@@ -110,7 +110,7 @@ time, and terminal events.
 3. Initialize `esp_openclaw_node_config_t` with
   `esp_openclaw_node_config_init_default()`.
 4. Create the node with `esp_openclaw_node_create()`.
-5. Register capabilities and commands while the node is idle.
+5. Register capabilities and commands before the first accepted connect request.
 6. Submit one connect request with `esp_openclaw_node_request_connect()`.
 7. Wait for a terminal event before submitting the next control request.
 8. Destroy the node with `esp_openclaw_node_destroy()` when finished.
@@ -218,7 +218,8 @@ Rules:
 - capabilities are plain strings
 - commands are plain strings plus a handler and optional context pointer
 - Duplicate capability or command names are ignored and return `ESP_OK`
-- Registration is allowed only while the node is idle
+- Registration is allowed only when no session is active and no connect or
+  disconnect request is in flight
 - Registration and transport resource limits default to
 `ESP_OPENCLAW_NODE_MAX_CAPABILITIES`, `ESP_OPENCLAW_NODE_MAX_COMMANDS`,
 the internal work-queue length, and the component/WebSocket task and buffer
@@ -256,11 +257,13 @@ Handler behavior:
 - handlers run synchronously on the component task
 - `params_json` is the raw UTF-8 JSON string from `payload.paramsJSON`
 - when the request omits `paramsJSON`, the component passes `"{}"`
-- on success, return `ESP_OK` and optionally allocate a JSON string for
-`*out_payload_json`
+- the component always passes `out_payload_json` and initializes
+`*out_payload_json` to `NULL` before calling the handler
+- on success, return `ESP_OK` and either leave `*out_payload_json` as `NULL`
+to send no payload or assign a UTF-8 JSON string to `*out_payload_json`
 - on failure, return a non-`ESP_OK` code and populate `out_error` with a stable
 error `code` and human-readable `message`
-- any non-`NULL` `out_payload_json` buffer must be `malloc()`-compatible; the
+- any non-`NULL` `*out_payload_json` buffer must be `malloc()`-compatible; the
 component sends it as `payloadJSON` and then frees it
 
 Because handlers run on the component task, long-running work should be handed
@@ -280,7 +283,8 @@ Request rules:
 reconnect session is present
 Applications can check saved-session availability with
 `esp_openclaw_node_has_saved_session()` before submitting that request.
-- explicit connect requests are valid only while the node is idle
+- explicit connect requests are valid only when no session is active and no
+  connect or disconnect request is in flight
 - `esp_openclaw_node_request_disconnect()` is valid only while the node is ready
 - once destroy begins, new async requests are rejected
 

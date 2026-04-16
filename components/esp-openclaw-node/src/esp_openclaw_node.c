@@ -20,7 +20,7 @@ static const char *DEFAULT_CLIENT_MODE = "node";
 static const char *DEFAULT_ROLE = "node";
 static const char *DEFAULT_LOCALE = "en-US";
 
-const esp_openclaw_node_transport_ops_t esp_openclaw_node_default_transport_ops = {
+const esp_openclaw_node_websocket_client_ops_t esp_openclaw_node_default_websocket_client_ops = {
     .client_init = esp_websocket_client_init,
     .register_events = esp_websocket_register_events,
     .client_start = esp_websocket_client_start,
@@ -30,7 +30,7 @@ const esp_openclaw_node_transport_ops_t esp_openclaw_node_default_transport_ops 
     .send_with_opcode = esp_websocket_client_send_with_opcode,
 };
 
-__attribute__((weak)) const esp_openclaw_node_transport_ops_t *esp_openclaw_node_test_transport_ops(void)
+__attribute__((weak)) const esp_openclaw_node_websocket_client_ops_t *esp_openclaw_node_test_websocket_client_ops(void)
 {
     return NULL;
 }
@@ -427,11 +427,11 @@ esp_err_t esp_openclaw_node_create(
         return err;
     }
 
-    const esp_openclaw_node_transport_ops_t *test_ops =
-        esp_openclaw_node_test_transport_ops();
-    node->transport_ops = test_ops != NULL
-        ? test_ops
-        : &esp_openclaw_node_default_transport_ops;
+    const esp_openclaw_node_websocket_client_ops_t *test_websocket_client_ops =
+        esp_openclaw_node_test_websocket_client_ops();
+    node->websocket_client_ops = test_websocket_client_ops != NULL
+        ? test_websocket_client_ops
+        : &esp_openclaw_node_default_websocket_client_ops;
     node->state = ESP_OPENCLAW_NODE_INTERNAL_IDLE;
 
     BaseType_t task_ok = xTaskCreate(

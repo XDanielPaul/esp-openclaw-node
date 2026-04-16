@@ -10,10 +10,10 @@ This repository contains the `esp-openclaw-node` ESP-IDF component, example appl
 
 ## Repository Layout
 
-- `components/esp-openclaw-node/` The `esp-openclaw-node` ESP-IDF component that handles OpenClaw transport, pairing, reconnect, and command dispatch.  
+- `components/esp-openclaw-node/`: The `esp-openclaw-node` ESP-IDF component that handles OpenClaw transport, pairing, reconnect, and command dispatch.  
 See the [Component README](./components/esp-openclaw-node/README.md) for more details on component internals.
-- `examples/` Example applications for supported boards.
-- `docs/` Getting-started and troubleshooting guides.
+- `examples/`: Example applications for supported boards.
+- `docs/`: Getting-started and troubleshooting guides.
 
 ## Start Here
 

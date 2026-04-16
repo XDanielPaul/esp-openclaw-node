@@ -22,14 +22,14 @@ static void websocket_event_handler(
     int32_t event_id,
     void *event_data);
 
-bool esp_openclaw_node_should_accept_callback_generation_locked(
+bool esp_openclaw_node_should_accept_callback_transport_id_locked(
     esp_openclaw_node_handle_t node,
-    uint32_t generation)
+    uint32_t transport_id)
 {
     return node->state != ESP_OPENCLAW_NODE_INTERNAL_DESTROYING &&
            node->state != ESP_OPENCLAW_NODE_INTERNAL_CLOSED &&
-           node->active_transport_generation == generation &&
-           generation != 0;
+           node->active_transport_id == transport_id &&
+           transport_id != 0;
 }
 
 esp_err_t esp_openclaw_node_validate_tls_preflight(
@@ -48,8 +48,8 @@ static void clear_active_transport_fields_locked(esp_openclaw_node_handle_t node
 {
     node->ws = NULL;
     node->transport_connected = false;
-    node->ws_started = false;
-    node->active_transport_generation = 0;
+    node->client_started = false;
+    node->active_transport_id = 0;
     esp_openclaw_node_clear_session_wait_state_locked(node);
     esp_openclaw_node_clear_connect_source_struct(&node->active_connect_source);
 }
@@ -61,23 +61,23 @@ void esp_openclaw_node_cleanup_transport_instance(
     esp_websocket_client_handle_t ws = NULL;
     esp_openclaw_node_transport_event_ctx_t *transport_ctx = NULL;
     char *gateway_uri = NULL;
-    bool ws_started = false;
+    bool client_started = false;
 
     esp_openclaw_node_lock_state(node);
     ws = node->ws;
     transport_ctx = node->transport_ctx;
     gateway_uri = node->transport_gateway_uri;
-    ws_started = node->ws_started;
+    client_started = node->client_started;
     node->transport_ctx = NULL;
     node->transport_gateway_uri = NULL;
     clear_active_transport_fields_locked(node);
     esp_openclaw_node_unlock_state(node);
 
     if (ws != NULL) {
-        if (stop_client && ws_started) {
-            node->transport_ops->client_stop(ws);
+        if (stop_client && client_started) {
+            node->websocket_client_ops->client_stop(ws);
         }
-        node->transport_ops->client_destroy(ws);
+        node->websocket_client_ops->client_destroy(ws);
     }
 
     free(transport_ctx);
@@ -166,28 +166,28 @@ esp_err_t esp_openclaw_node_start_transport_for_active_source(
             node->config.skip_cert_common_name_check;
     }
 
-    esp_websocket_client_handle_t ws = node->transport_ops->client_init(&ws_config);
+    esp_websocket_client_handle_t ws = node->websocket_client_ops->client_init(&ws_config);
     if (ws == NULL) {
         free(gateway_uri_copy);
         free(transport_ctx);
         return ESP_FAIL;
     }
 
-    uint32_t generation = 0;
+    uint32_t transport_id = 0;
     esp_openclaw_node_lock_state(node);
-    generation = ++node->next_transport_generation;
+    transport_id = ++node->next_transport_id;
     transport_ctx->node = node;
-    transport_ctx->generation = generation;
+    transport_ctx->transport_id = transport_id;
     node->transport_ctx = transport_ctx;
     node->transport_gateway_uri = gateway_uri_copy;
-    node->active_transport_generation = generation;
+    node->active_transport_id = transport_id;
     node->ws = ws;
-    node->ws_started = false;
+    node->client_started = false;
     node->transport_connected = false;
     esp_openclaw_node_clear_session_wait_state_locked(node);
     esp_openclaw_node_unlock_state(node);
 
-    esp_err_t err = node->transport_ops->register_events(
+    esp_err_t err = node->websocket_client_ops->register_events(
         ws,
         WEBSOCKET_EVENT_ANY,
         websocket_event_handler,
@@ -197,14 +197,14 @@ esp_err_t esp_openclaw_node_start_transport_for_active_source(
         return err;
     }
 
-    err = node->transport_ops->client_start(ws);
+    err = node->websocket_client_ops->client_start(ws);
     if (err != ESP_OK) {
         esp_openclaw_node_cleanup_transport_instance(node, false);
         return err;
     }
 
     esp_openclaw_node_lock_state(node);
-    node->ws_started = true;
+    node->client_started = true;
     esp_openclaw_node_unlock_state(node);
 
     ESP_LOGI(
@@ -231,7 +231,7 @@ void esp_openclaw_node_send_challenge_kick_ping(esp_openclaw_node_handle_t node)
         return;
     }
 
-    int written = node->transport_ops->send_with_opcode(
+    int written = node->websocket_client_ops->send_with_opcode(
         ws,
         WS_TRANSPORT_OPCODES_PING,
         NULL,
@@ -278,9 +278,9 @@ static void websocket_event_handler(
         (esp_websocket_event_data_t *)event_data;
 
     esp_openclaw_node_lock_state(node);
-    bool accept = esp_openclaw_node_should_accept_callback_generation_locked(
+    bool accept = esp_openclaw_node_should_accept_callback_transport_id_locked(
         node,
-        transport_ctx->generation);
+        transport_ctx->transport_id);
     esp_openclaw_node_internal_state_t state = node->state;
     esp_openclaw_node_unlock_state(node);
     if (!accept) {
@@ -291,7 +291,7 @@ static void websocket_event_handler(
     case WEBSOCKET_EVENT_CONNECTED: {
         esp_openclaw_node_work_message_t message = {
             .type = ESP_OPENCLAW_NODE_WORK_MSG_WS_CONNECTED,
-            .generation = transport_ctx->generation,
+            .transport_id = transport_ctx->transport_id,
             .local_err = ESP_OK,
         };
         esp_openclaw_node_enqueue_work_message_from_callback(node, &message);
@@ -301,7 +301,7 @@ static void websocket_event_handler(
     case WEBSOCKET_EVENT_CLOSED: {
         esp_openclaw_node_work_message_t message = {
             .type = ESP_OPENCLAW_NODE_WORK_MSG_WS_DISCONNECTED,
-            .generation = transport_ctx->generation,
+            .transport_id = transport_ctx->transport_id,
             .local_err = local_err_from_ws_event(data),
         };
         esp_openclaw_node_enqueue_work_message_from_callback(node, &message);
@@ -310,7 +310,7 @@ static void websocket_event_handler(
     case WEBSOCKET_EVENT_ERROR: {
         esp_openclaw_node_work_message_t message = {
             .type = ESP_OPENCLAW_NODE_WORK_MSG_WS_ERROR,
-            .generation = transport_ctx->generation,
+            .transport_id = transport_ctx->transport_id,
             .local_err = local_err_from_ws_event(data),
         };
         esp_openclaw_node_enqueue_work_message_from_callback(node, &message);
@@ -320,8 +320,8 @@ static void websocket_event_handler(
         if (esp_openclaw_node_state_is_connecting(state)) {
             ESP_LOGD(
                 ESP_OPENCLAW_NODE_TAG,
-                "ws frame during connect: gen=%" PRIu32 " opcode=0x%x fin=%d data_len=%d payload_len=%d offset=%d state=%s",
-                transport_ctx->generation,
+                "ws frame during connect: transport_id=%" PRIu32 " opcode=0x%x fin=%d data_len=%d payload_len=%d offset=%d state=%s",
+                transport_ctx->transport_id,
                 data != NULL ? data->op_code : 0,
                 data != NULL ? data->fin : 0,
                 data != NULL ? data->data_len : 0,
@@ -342,9 +342,9 @@ static void websocket_event_handler(
         }
 
         esp_openclaw_node_lock_state(node);
-        if (!esp_openclaw_node_should_accept_callback_generation_locked(
+        if (!esp_openclaw_node_should_accept_callback_transport_id_locked(
                 node,
-                transport_ctx->generation)) {
+                transport_ctx->transport_id)) {
             esp_openclaw_node_unlock_state(node);
             break;
         }
@@ -380,7 +380,7 @@ static void websocket_event_handler(
             node->rx_buffer[data->payload_len] = '\0';
             esp_openclaw_node_work_message_t message = {
                 .type = ESP_OPENCLAW_NODE_WORK_MSG_DATA,
-                .generation = transport_ctx->generation,
+                .transport_id = transport_ctx->transport_id,
                 .text = node->rx_buffer,
             };
             node->rx_buffer = NULL;

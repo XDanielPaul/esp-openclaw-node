@@ -22,16 +22,16 @@
 #include "esp_openclaw_node.h"
 #include "esp_openclaw_node_persisted_session.h"
 
-#define ESP_OPENCLAW_NODE_TAG "esp_openclaw_node"
-#define ESP_OPENCLAW_NODE_CONNECT_TIMEOUT_MS 12000LL
-#define ESP_OPENCLAW_NODE_WS_PING_INTERVAL_SEC 5
-#define ESP_OPENCLAW_NODE_WS_PINGPONG_TIMEOUT_SEC 10
-#define ESP_OPENCLAW_NODE_TASK_POLL_TICKS pdMS_TO_TICKS(250)
-#define ESP_OPENCLAW_NODE_WORK_QUEUE_LENGTH CONFIG_ESP_OPENCLAW_NODE_WORK_QUEUE_LENGTH
-#define ESP_OPENCLAW_NODE_TASK_STACK_SIZE CONFIG_ESP_OPENCLAW_NODE_TASK_STACK_SIZE
-#define ESP_OPENCLAW_NODE_TRANSPORT_TASK_STACK_SIZE \
+#define ESP_OPENCLAW_NODE_TAG                         "esp_openclaw_node"
+#define ESP_OPENCLAW_NODE_CONNECT_TIMEOUT_MS          12000LL
+#define ESP_OPENCLAW_NODE_WS_PING_INTERVAL_SEC        5
+#define ESP_OPENCLAW_NODE_WS_PINGPONG_TIMEOUT_SEC     10
+#define ESP_OPENCLAW_NODE_TASK_POLL_TICKS             pdMS_TO_TICKS(250)
+#define ESP_OPENCLAW_NODE_WORK_QUEUE_LENGTH           CONFIG_ESP_OPENCLAW_NODE_WORK_QUEUE_LENGTH
+#define ESP_OPENCLAW_NODE_TASK_STACK_SIZE             CONFIG_ESP_OPENCLAW_NODE_TASK_STACK_SIZE
+#define ESP_OPENCLAW_NODE_TRANSPORT_TASK_STACK_SIZE   \
     CONFIG_ESP_OPENCLAW_NODE_TRANSPORT_TASK_STACK_SIZE
-#define ESP_OPENCLAW_NODE_TRANSPORT_BUFFER_SIZE \
+#define ESP_OPENCLAW_NODE_TRANSPORT_BUFFER_SIZE       \
     CONFIG_ESP_OPENCLAW_NODE_TRANSPORT_BUFFER_SIZE
 
 typedef enum {
@@ -81,7 +81,7 @@ typedef enum {
 
 typedef struct {
     esp_openclaw_node_work_message_type_t type;
-    uint32_t generation;
+    uint32_t transport_id; /* Tags the websocket instance that produced this message. */
     esp_err_t local_err;
     char *text;
     esp_openclaw_node_connect_request_source_t connect_source;
@@ -95,7 +95,7 @@ typedef struct {
 
 typedef struct esp_openclaw_node_transport_event_ctx {
     struct esp_openclaw_node *node;
-    uint32_t generation;
+    uint32_t transport_id; /* Stable ID for one websocket transport lifetime. */
 } esp_openclaw_node_transport_event_ctx_t;
 
 typedef struct {
@@ -119,7 +119,7 @@ typedef struct {
         const uint8_t *data,
         int len,
         TickType_t timeout);
-} esp_openclaw_node_transport_ops_t;
+} esp_openclaw_node_websocket_client_ops_t;
 
 typedef enum {
     CONNECT_RESPONSE_OUTCOME_IGNORE = 0,
@@ -138,7 +138,7 @@ struct esp_openclaw_node {
     TaskHandle_t task_handle;
     SemaphoreHandle_t destroy_done;
     SemaphoreHandle_t state_lock;
-    const esp_openclaw_node_transport_ops_t *transport_ops;
+    const esp_openclaw_node_websocket_client_ops_t *websocket_client_ops;
     esp_openclaw_node_identity_t identity;
     esp_openclaw_node_persisted_session_t persisted_session;
     esp_openclaw_node_config_t config;
@@ -146,10 +146,10 @@ struct esp_openclaw_node {
     esp_openclaw_node_pending_control_request_t pending_control;
     esp_websocket_client_handle_t ws;
     esp_openclaw_node_transport_event_ctx_t *transport_ctx;
-    uint32_t next_transport_generation;
-    uint32_t active_transport_generation;
-    bool transport_connected;
-    bool ws_started;
+    uint32_t next_transport_id;
+    uint32_t active_transport_id;
+    bool transport_connected; /* True after the active websocket transport reports CONNECTED. */
+    bool client_started; /* True after client_start() succeeds; cleanup should stop before destroy. */
     char pending_connect_id[32];
     int64_t connect_started_ms;
     char *transport_gateway_uri;
@@ -162,9 +162,9 @@ struct esp_openclaw_node {
     esp_openclaw_node_registered_command_t commands[ESP_OPENCLAW_NODE_MAX_COMMANDS];
 };
 
-extern const esp_openclaw_node_transport_ops_t esp_openclaw_node_default_transport_ops;
+extern const esp_openclaw_node_websocket_client_ops_t esp_openclaw_node_default_websocket_client_ops;
 
-__attribute__((weak)) const esp_openclaw_node_transport_ops_t *esp_openclaw_node_test_transport_ops(void);
+__attribute__((weak)) const esp_openclaw_node_websocket_client_ops_t *esp_openclaw_node_test_websocket_client_ops(void);
 
 const char *esp_openclaw_node_firmware_version(void);
 char *esp_openclaw_node_duplicate_string(const char *value);
@@ -258,9 +258,9 @@ esp_err_t esp_openclaw_node_start_transport_for_active_source(
 void esp_openclaw_node_cleanup_transport_instance(
     esp_openclaw_node_handle_t node,
     bool stop_client);
-bool esp_openclaw_node_should_accept_callback_generation_locked(
+bool esp_openclaw_node_should_accept_callback_transport_id_locked(
     esp_openclaw_node_handle_t node,
-    uint32_t generation);
+    uint32_t transport_id);
 void esp_openclaw_node_send_challenge_kick_ping(esp_openclaw_node_handle_t node);
 
 void esp_openclaw_node_process_gateway_message(

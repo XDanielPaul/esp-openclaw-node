@@ -67,9 +67,10 @@ typedef struct {
 /**
  * @brief Node event callback.
  *
- * Event callbacks run on the component task. Callback code must stay short and
- * non-blocking. It may call the async `esp_openclaw_node_request_*()` APIs. It
- * must not call @ref esp_openclaw_node_destroy.
+ * Event callbacks run on the component's internal node task. Callback code
+ * must stay short and non-blocking. It may call the async
+ * `esp_openclaw_node_request_*()` APIs. It must not call
+ * @ref esp_openclaw_node_destroy.
  *
  * For each accepted connect request, wait for exactly one terminal outcome:
  * - @ref ESP_OPENCLAW_NODE_EVENT_CONNECTED
@@ -108,21 +109,21 @@ typedef void (*esp_openclaw_node_event_cb_t)(
  * session once a route to the configured gateway exists.
  */
 typedef struct {
-    const char *display_name;                         /**< Human-readable name advertised to the gateway. */
-    const char *platform;                             /**< Lower-level platform string included in auth and identity metadata. */
-    const char *device_family;                        /**< Higher-level device family string included in auth metadata. */
-    const char *client_id;                            /**< Protocol client identifier sent during connect. */
-    const char *client_mode;                          /**< Protocol client mode, typically `node` for these examples. */
-    const char *role;                                 /**< Protocol role string expected by the gateway for this client. */
-    const char *model_identifier;                     /**< Optional model string such as `esp32c6` or `esp32s3`. */
-    const char *locale;                               /**< Optional locale metadata advertised to the gateway. */
-    const char *tls_common_name;                      /**< Optional TLS common-name override for certificate checks. */
-    const char *tls_cert_pem;                         /**< Optional PEM trust anchor for `wss://` connections. */
-    size_t tls_cert_len;                              /**< Length of @p tls_cert_pem in bytes, or `0` for NUL-terminated PEM. */
-    bool use_cert_bundle;                             /**< Use the ESP-IDF certificate bundle for server validation. */
-    bool skip_cert_common_name_check;                 /**< Skip common-name validation for TLS server certificates. */
-    esp_openclaw_node_event_cb_t event_cb;            /**< Optional event callback invoked on the component task. */
-    void *event_user_ctx;                             /**< Opaque caller context passed back to @p event_cb. */
+    const char *display_name;      /**< Human-readable name advertised to the gateway. */
+    const char *platform;          /**< Lower-level platform string included in auth and identity metadata. */
+    const char *device_family;     /**< Higher-level device family string included in auth metadata. */
+    const char *client_id;         /**< Protocol client identifier sent during connect. */
+    const char *client_mode;       /**< Protocol client mode, typically `node` for these examples. */
+    const char *role;              /**< Protocol role string expected by the gateway for this client. */
+    const char *model_identifier;  /**< Optional model string such as `esp32c6` or `esp32s3`. */
+    const char *locale;            /**< Optional locale metadata advertised to the gateway. */
+    const char *tls_common_name;   /**< Optional TLS common-name override for certificate checks. */
+    const char *tls_cert_pem;      /**< Optional PEM trust anchor for `wss://` connections. */
+    size_t tls_cert_len;           /**< Length of @p tls_cert_pem in bytes, or `0` for NUL-terminated PEM. */
+    bool use_cert_bundle;          /**< Use the ESP-IDF certificate bundle for server validation. */
+    bool skip_cert_common_name_check; /**< Skip common-name validation for TLS server certificates. */
+    esp_openclaw_node_event_cb_t event_cb; /**< Optional event callback invoked on the component's internal node task. */
+    void *event_user_ctx;          /**< Opaque caller context passed back to @p event_cb. */
 } esp_openclaw_node_config_t;
 
 /* Command Types */
@@ -142,9 +143,12 @@ typedef struct {
  *        request omits `paramsJSON`, the component passes `"{}"`.
  * @param params_len Length of @p params_json in bytes, excluding the trailing
  *        `NUL`.
- * @param[out] out_payload_json Optional UTF-8 JSON payload to send back to the
- *             gateway. When non-`NULL`, the handler transfers ownership of a
- *             `malloc()`-compatible buffer to the component.
+ * @param[out] out_payload_json Output location for the success payload JSON.
+ *             The component initializes `*out_payload_json` to `NULL` before
+ *             calling the handler. On success, leave `*out_payload_json` as
+ *             `NULL` to send no payload, or assign a `malloc()`-compatible
+ *             UTF-8 JSON string. The component takes ownership of any
+ *             non-`NULL` buffer and frees it after sending `payloadJSON`.
  * @param[out] out_error Structured command error when the handler fails.
  *
  * @return
@@ -250,7 +254,8 @@ esp_err_t esp_openclaw_node_destroy(esp_openclaw_node_handle_t node);
  * @return
  *      - `ESP_OK` on success
  *      - `ESP_ERR_INVALID_ARG` if `node` or `capability` is invalid
- *      - `ESP_ERR_INVALID_STATE` if the node is not idle
+ *      - `ESP_ERR_INVALID_STATE` if a session is active, a connect or
+ *        disconnect request is already in progress, or destroy has begun
  *      - `ESP_ERR_NO_MEM` if the registry is full or the capability copy
  *        cannot be allocated
  */
@@ -267,7 +272,8 @@ esp_err_t esp_openclaw_node_register_capability(
  * @return
  *      - `ESP_OK` on success
  *      - `ESP_ERR_INVALID_ARG` if `node` or `command` is invalid
- *      - `ESP_ERR_INVALID_STATE` if the node is not idle
+ *      - `ESP_ERR_INVALID_STATE` if a session is active, a connect or
+ *        disconnect request is already in progress, or destroy has begun
  *      - `ESP_ERR_NO_MEM` if the registry is full or the command name copy
  *        cannot be allocated
  */
@@ -293,8 +299,9 @@ esp_err_t esp_openclaw_node_register_command(
  * @return
  *      - `ESP_OK` if the request was accepted into the component queue
  *      - `ESP_ERR_INVALID_ARG` if `node` or `request` is invalid
- *      - `ESP_ERR_INVALID_STATE` if the node is not idle, the saved reconnect
- *        session is missing for `SAVED_SESSION`, or destroy has begun
+ *      - `ESP_ERR_INVALID_STATE` if a session is already active, another
+ *        connect or disconnect request is already in progress, the saved
+ *        reconnect session is missing for `SAVED_SESSION`, or destroy has begun
  *      - `ESP_ERR_NO_MEM` if the request could not be copied or queued
  *      - `ESP_FAIL` on an unexpected local submission failure
  */

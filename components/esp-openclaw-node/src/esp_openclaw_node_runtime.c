@@ -97,9 +97,9 @@ void esp_openclaw_node_enqueue_work_message_from_callback(
     bool accept = false;
 
     esp_openclaw_node_lock_state(node);
-    accept = esp_openclaw_node_should_accept_callback_generation_locked(
+    accept = esp_openclaw_node_should_accept_callback_transport_id_locked(
         node,
-        message->generation);
+        message->transport_id);
     esp_openclaw_node_unlock_state(node);
     if (!accept) {
         esp_openclaw_node_free_work_message_payload(message);
@@ -117,7 +117,7 @@ static void complete_transport_event_state_after_disconnect_locked(
 {
     esp_openclaw_node_clear_session_wait_state_locked(node);
     node->transport_connected = false;
-    node->ws_started = false;
+    node->client_started = false;
 }
 
 static void handle_request_connect(
@@ -157,7 +157,7 @@ static void handle_request_disconnect(esp_openclaw_node_handle_t node)
     bool request_pending =
         node->pending_control == ESP_OPENCLAW_NODE_PENDING_CONTROL_REQUEST_DISCONNECT;
     bool has_transport =
-        node->ws != NULL || node->active_transport_generation != 0;
+        node->ws != NULL || node->active_transport_id != 0;
     esp_openclaw_node_unlock_state(node);
 
     if (!request_pending) {
@@ -178,19 +178,19 @@ static void handle_ws_connected(
     bool kick_challenge = false;
 
     esp_openclaw_node_lock_state(node);
-    bool current_generation =
-        node->active_transport_generation == message->generation;
+    bool current_transport =
+        node->active_transport_id == message->transport_id;
     esp_openclaw_node_internal_state_t state = node->state;
-    if (current_generation) {
+    if (current_transport) {
         node->transport_connected = true;
     }
-    if (current_generation &&
+    if (current_transport &&
         node->state == ESP_OPENCLAW_NODE_INTERNAL_CONNECTING) {
         kick_challenge = true;
     }
     esp_openclaw_node_unlock_state(node);
 
-    if (!current_generation) {
+    if (!current_transport) {
         return;
     }
 
@@ -200,8 +200,8 @@ static void handle_ws_connected(
 
     ESP_LOGI(
         ESP_OPENCLAW_NODE_TAG,
-        "websocket connected: gen=%" PRIu32 " state=%s",
-        message->generation,
+        "websocket connected: transport_id=%" PRIu32 " state=%s",
+        message->transport_id,
         esp_openclaw_node_internal_state_name(state));
 }
 
@@ -210,22 +210,22 @@ static void handle_ws_disconnected(
     const esp_openclaw_node_work_message_t *message)
 {
     esp_openclaw_node_lock_state(node);
-    bool current_generation =
-        node->active_transport_generation == message->generation;
+    bool current_transport =
+        node->active_transport_id == message->transport_id;
     esp_openclaw_node_internal_state_t state = node->state;
-    if (current_generation) {
+    if (current_transport) {
         complete_transport_event_state_after_disconnect_locked(node);
     }
     esp_openclaw_node_unlock_state(node);
 
-    if (!current_generation) {
+    if (!current_transport) {
         return;
     }
 
     ESP_LOGW(
         ESP_OPENCLAW_NODE_TAG,
-        "websocket disconnected: gen=%" PRIu32 " state=%s err=%s",
-        message->generation,
+        "websocket disconnected: transport_id=%" PRIu32 " state=%s err=%s",
+        message->transport_id,
         esp_openclaw_node_internal_state_name(state),
         esp_err_to_name(message->local_err));
 
@@ -253,17 +253,17 @@ static void handle_ws_error(
     const esp_openclaw_node_work_message_t *message)
 {
     esp_openclaw_node_lock_state(node);
-    bool current_generation =
-        node->active_transport_generation == message->generation;
+    bool current_transport =
+        node->active_transport_id == message->transport_id;
     esp_openclaw_node_unlock_state(node);
-    if (!current_generation) {
+    if (!current_transport) {
         return;
     }
 
     ESP_LOGW(
         ESP_OPENCLAW_NODE_TAG,
-        "websocket error: gen=%" PRIu32 " state=%s err=%s",
-        message->generation,
+        "websocket error: transport_id=%" PRIu32 " state=%s err=%s",
+        message->transport_id,
         esp_openclaw_node_internal_state_name(node->state),
         esp_err_to_name(message->local_err));
 }
@@ -317,12 +317,12 @@ static bool process_work_message(
         break;
     case ESP_OPENCLAW_NODE_WORK_MSG_DATA: {
         esp_openclaw_node_lock_state(node);
-        bool current_generation =
-            node->active_transport_generation == message->generation &&
+        bool current_transport =
+            node->active_transport_id == message->transport_id &&
             node->state != ESP_OPENCLAW_NODE_INTERNAL_DESTROYING &&
             node->state != ESP_OPENCLAW_NODE_INTERNAL_CLOSED;
         esp_openclaw_node_unlock_state(node);
-        if (current_generation && message->text != NULL) {
+        if (current_transport && message->text != NULL) {
             esp_openclaw_node_process_gateway_message(node, message->text);
         }
         break;
