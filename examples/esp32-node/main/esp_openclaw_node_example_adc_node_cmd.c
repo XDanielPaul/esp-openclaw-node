@@ -16,7 +16,6 @@
 #include "esp_check.h"
 #include "esp_openclaw_node_example_json.h"
 #include "soc/adc_channel.h"
-#include "soc/adc_periph.h"
 #include "soc/soc_caps.h"
 
 #if SOC_ADC_SUPPORTED
@@ -134,7 +133,10 @@ static esp_err_t handle_adc_read(
     cJSON_AddNumberToObject(payload, "unit", 1);
     cJSON_AddNumberToObject(payload, "channel", channel_num);
     cJSON_AddNumberToObject(payload, "raw", raw);
-    cJSON_AddNumberToObject(payload, "gpio", adc_channel_io_map[0][channel_num]);
+    int gpio_num = -1;
+    if (adc_oneshot_channel_to_io(ADC_UNIT_1, adc_channel, &gpio_num) == ESP_OK) {
+        cJSON_AddNumberToObject(payload, "gpio", gpio_num);
+    }
     if (adc->adc_cali_ready[channel_num]) {
         int mv = 0;
         if (adc_cali_raw_to_voltage(adc->adc_cali[channel_num], raw, &mv) == ESP_OK) {

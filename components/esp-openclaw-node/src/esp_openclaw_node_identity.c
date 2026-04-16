@@ -16,7 +16,7 @@
 #include "esp_log.h"
 #include "esp_random.h"
 #include "mbedtls/base64.h"
-#include "mbedtls/sha256.h"
+#include "sha/sha_parallel_engine.h"
 #include "nvs.h"
 #include "sodium.h"
 
@@ -241,7 +241,7 @@ esp_err_t esp_openclaw_node_identity_load_or_create(esp_openclaw_node_identity_t
     }
 
     uint8_t digest[32] = {0};
-    mbedtls_sha256(identity->public_key, ESP_OPENCLAW_NODE_ED25519_PUBLIC_KEY_LEN, digest, 0);
+    esp_sha(SHA2_256, identity->public_key, ESP_OPENCLAW_NODE_ED25519_PUBLIC_KEY_LEN, digest);
     bytes_to_lower_hex(digest, sizeof(digest), identity->device_id, sizeof(identity->device_id));
     err = base64url_encode(
         identity->public_key,

@@ -20,3 +20,9 @@ set(esp_openclaw_node_component_args
 )
 
 idf_component_register(${esp_openclaw_node_component_args})
+
+# Work around the IDF 6.0/newlib-picolibc Annex K header breakage in the
+# managed libsodium component without affecting the rest of the build.
+if(TARGET __idf_espressif__libsodium)
+    target_compile_definitions(__idf_espressif__libsodium PRIVATE __STDC_WANT_LIB_EXT1__=0)
+endif()
